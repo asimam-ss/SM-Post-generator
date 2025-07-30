@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Copy, Share2, Users, MessageCircle, Linkedin, Twitter } from 'lucide-react';
+import { Copy, Share2, Users, MessageCircle, Linkedin, Twitter, CheckCircle } from 'lucide-react';
 
 const SocialMediaPostGenerator = () => {
   const [eventInput, setEventInput] = useState('');
   const [selectedTones, setSelectedTones] = useState(['professional']);
   const [generatedPosts, setGeneratedPosts] = useState({});
   const [isGenerating, setIsGenerating] = useState(false);
+  const [copiedText, setCopiedText] = useState('');
 
   const tones = [
     { id: 'professional', name: 'Professional', color: 'bg-blue-100 text-blue-800' },
@@ -255,26 +256,52 @@ Want to dive deeper into how this could transform your operations? Let's schedul
     }, 1500);
   };
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text);
+  const copyToClipboard = async (text, identifier) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedText(identifier);
+      setTimeout(() => setCopiedText(''), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+      // Fallback for browsers that don't support clipboard API
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopiedText(identifier);
+      setTimeout(() => setCopiedText(''), 2000);
+    }
   };
 
   const getCharacterCount = (text, limit) => {
     const count = text.length;
     const isOverLimit = count > limit;
+    const isNearLimit = count > limit * 0.9;
+    
+    let colorClass = 'text-gray-500';
+    if (isOverLimit) {
+      colorClass = 'text-red-500';
+    } else if (isNearLimit) {
+      colorClass = 'text-yellow-500';
+    } else {
+      colorClass = 'text-green-500';
+    }
+    
     return (
-      <span className={`text-sm ${isOverLimit ? 'text-red-500' : 'text-gray-500'}`}>
+      <span className={`text-sm font-medium ${colorClass}`}>
         {count}/{limit} characters {isOverLimit && '(Over limit!)'}
       </span>
     );
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6 bg-gray-50 min-h-screen">
-      <div className="bg-white rounded-lg shadow-lg p-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Social Media Post Generator</h1>
-          <p className="text-gray-600">SAAS Gauge Management Solution - CMO Content Creator</p>
+    <div className="max-w-6xl mx-auto p-6 bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
+      <div className="bg-white rounded-xl shadow-lg p-8">
+        <div className="mb-8 text-center">
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">Social Media Post Generator</h1>
+          <p className="text-lg text-gray-600">SAAS Gauge Management Solution - CMO Content Creator</p>
         </div>
 
         {/* Event Input Section */}
@@ -286,7 +313,7 @@ Want to dive deeper into how this could transform your operations? Let's schedul
             value={eventInput}
             onChange={(e) => setEventInput(e.target.value)}
             placeholder="Enter your event details here (e.g., 'We just launched our new AI-powered calibration feature that reduces setup time by 60%')"
-            className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            className="w-full p-4 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-colors"
             rows="4"
           />
         </div>
@@ -294,16 +321,16 @@ Want to dive deeper into how this could transform your operations? Let's schedul
         {/* Tone Selection */}
         <div className="mb-8">
           <label className="block text-lg font-semibold text-gray-700 mb-3">
-            Select Tones
+            Select Tones (Multiple Selection Allowed)
           </label>
           <div className="flex flex-wrap gap-3">
             {tones.map(tone => (
               <button
                 key={tone.id}
                 onClick={() => handleToneToggle(tone.id)}
-                className={`px-4 py-2 rounded-full border-2 transition-all ${
+                className={`px-4 py-2 rounded-full border-2 transition-all duration-200 transform hover:scale-105 ${
                   selectedTones.includes(tone.id)
-                    ? `${tone.color} border-current`
+                    ? `${tone.color} border-current shadow-md`
                     : 'bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200'
                 }`}
               >
@@ -311,14 +338,17 @@ Want to dive deeper into how this could transform your operations? Let's schedul
               </button>
             ))}
           </div>
+          <p className="text-sm text-gray-500 mt-2">
+            Selected: {selectedTones.length} tone{selectedTones.length !== 1 ? 's' : ''}
+          </p>
         </div>
 
         {/* Generate Button */}
-        <div className="mb-8">
+        <div className="mb-8 text-center">
           <button
             onClick={generatePosts}
             disabled={!eventInput.trim() || selectedTones.length === 0 || isGenerating}
-            className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2 mx-auto transform hover:scale-105"
           >
             <Share2 size={20} />
             {isGenerating ? 'Generating Posts...' : 'Generate Posts'}
@@ -328,36 +358,47 @@ Want to dive deeper into how this could transform your operations? Let's schedul
         {/* Generated Posts */}
         {Object.keys(generatedPosts).length > 0 && (
           <div className="space-y-8">
-            <h2 className="text-2xl font-bold text-gray-800">Generated Posts</h2>
+            <h2 className="text-2xl font-bold text-gray-800 text-center">Generated Posts</h2>
             
             {selectedTones.map(tone => (
-              <div key={tone} className="bg-gray-50 rounded-lg p-6">
-                <h3 className="text-xl font-semibold text-gray-700 mb-4 capitalize">
+              <div key={tone} className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-6 shadow-sm">
+                <h3 className="text-xl font-semibold text-gray-700 mb-4 capitalize flex items-center gap-2">
+                  <span className="w-3 h-3 bg-blue-500 rounded-full"></span>
                   {tone} Tone
                 </h3>
                 
-                <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-1">
+                <div className="grid gap-6">
                   {platforms.map(platform => {
                     const PlatformIcon = platform.icon;
                     const post = generatedPosts[tone]?.[platform.id];
+                    const copyId = `${tone}-${platform.id}`;
                     
                     if (!post) return null;
                     
                     return (
-                      <div key={platform.id} className="bg-white rounded-lg border p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <PlatformIcon className={`${platform.color}`} size={20} />
-                            <span className="font-semibold text-gray-700">
+                      <div key={platform.id} className="bg-white rounded-lg border-2 border-gray-200 p-6 hover:shadow-md transition-shadow">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <PlatformIcon className={`${platform.color} w-6 h-6`} />
+                            <span className="font-semibold text-gray-700 text-lg">
                               {platform.name}
                             </span>
                           </div>
                           <button
-                            onClick={() => copyToClipboard(post)}
-                            className="flex items-center gap-1 text-gray-500 hover:text-gray-700 transition-colors"
+                            onClick={() => copyToClipboard(post, copyId)}
+                            className="flex items-center gap-2 bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg transition-colors duration-200"
                           >
-                            <Copy size={16} />
-                            Copy
+                            {copiedText === copyId ? (
+                              <>
+                                <CheckCircle size={16} />
+                                Copied!
+                              </>
+                            ) : (
+                              <>
+                                <Copy size={16} />
+                                Copy
+                              </>
+                            )}
                           </button>
                         </div>
                         
@@ -365,7 +406,7 @@ Want to dive deeper into how this could transform your operations? Let's schedul
                           {getCharacterCount(post, platform.limit)}
                         </div>
                         
-                        <div className="bg-gray-50 p-3 rounded border text-sm whitespace-pre-wrap">
+                        <div className="bg-gray-50 p-4 rounded-lg border text-sm whitespace-pre-wrap font-mono leading-relaxed">
                           {post}
                         </div>
                       </div>
@@ -378,15 +419,25 @@ Want to dive deeper into how this could transform your operations? Let's schedul
         )}
 
         {/* Usage Instructions */}
-        <div className="mt-12 bg-blue-50 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-800 mb-3">How to Use:</h3>
+        <div className="mt-12 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
+          <h3 className="text-lg font-semibold text-blue-800 mb-3 flex items-center gap-2">
+            <Users size={20} />
+            How to Use:
+          </h3>
           <ol className="list-decimal list-inside space-y-2 text-blue-700">
             <li>Enter your event details in the text area above</li>
-            <li>Select one or more tones for your posts</li>
+            <li>Select one or more tones for your posts (multiple selection allowed)</li>
             <li>Click "Generate Posts" to create content for all platforms</li>
             <li>Review generated posts and copy the ones you want to use</li>
             <li>Customize company name and personal details before posting</li>
+            <li>Check character limits before posting on each platform</li>
           </ol>
+          
+          <div className="mt-4 p-3 bg-blue-100 rounded-lg">
+            <p className="text-sm text-blue-800">
+              <strong>Pro Tip:</strong> LinkedIn posts can be longer and more detailed, Twitter posts should be concise and punchy, while WhatsApp posts can be more personal and conversational.
+            </p>
+          </div>
         </div>
       </div>
     </div>
